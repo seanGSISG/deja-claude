@@ -1,0 +1,15 @@
+{
+  "name": "claude-memory",
+  "version": "0.2.0",
+  "description": "Always-on memory for Claude Code -- records sessions, extracts observations, consolidates insights, injects context automatically.",
+  "author": {
+    "name": "seanGSISG",
+    "url": "https://github.com/seanGSISG"
+  },
+  "repository": "https://github.com/seanGSISG/deja-claude",
+  "license": "MIT",
+  "keywords": ["memory", "context", "sessions", "observations"],
+  "hooks": "./hooks/hooks.json",
+  "skills": ["./skills/memory-query"],
+  "setup": "./scripts/setup.sh"
+}
