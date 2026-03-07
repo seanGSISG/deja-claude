@@ -10,7 +10,10 @@
   "plugins": [
     {
       "name": "claude-memory",
-      "source": ".",
+      "source": {
+        "source": "url",
+        "url": "https://github.com/seanGSISG/deja-claude.git"
+      },
       "description": "Always-on memory -- records, extracts, consolidates, injects context automatically",
       "version": "0.2.0"
     }

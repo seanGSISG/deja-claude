@@ -124,6 +124,10 @@ def test_marketplace_json_valid():
     assert isinstance(data["plugins"], list)
     assert len(data["plugins"]) >= 1
     assert data["plugins"][0]["name"] == "claude-memory"
+    source = data["plugins"][0]["source"]
+    assert isinstance(source, dict), "source should be a URL object"
+    assert source["source"] == "url"
+    assert "url" in source
 
 
 def test_hooks_json_valid():
