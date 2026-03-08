@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-PLUGIN_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-$(cd "$(dirname "$0")/.." && pwd)}"
 source "$PLUGIN_ROOT/hooks/lib.sh"
 
 PYTHON="$(resolve_python)"
@@ -18,11 +18,12 @@ ensure_dir "$(dirname "$SESSION_LOG")"
 # Append session_end event
 echo "{\"timestamp\":\"${TIMESTAMP}\",\"event_type\":\"session_end\"}" >> "$SESSION_LOG"
 
-# End session in SQLite
+# End session in SQLite — pass via env vars to avoid injection
+SESSION_ID="$SESSION_ID" PLUGIN_ROOT="$PLUGIN_ROOT" \
 "$PYTHON" -c "
-import sys; sys.path.insert(0, '$PLUGIN_ROOT/scripts')
+import os, sys; sys.path.insert(0, os.environ.get('PLUGIN_ROOT', '.') + '/scripts')
 from storage import end_session
-end_session('$SESSION_ID')
+end_session(os.environ['SESSION_ID'])
 " 2>/dev/null || true
 
 # Spawn extraction in background with env vars propagated

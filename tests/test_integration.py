@@ -91,7 +91,7 @@ def test_full_session_lifecycle(tmp_path):
     with patch("consolidate.get_provider", return_value=mock_provider2):
         result = run_consolidation(db_path=db_path)
 
-    assert result is True
+    assert result is not None
     consolidations = get_consolidations(db_path=db_path)
     assert len(consolidations) >= 1
 
@@ -140,7 +140,7 @@ def test_hooks_json_valid():
     hooks = data["hooks"]
     assert isinstance(hooks, dict), "hooks should be a dict keyed by event name"
 
-    expected_events = {"SessionStart", "PostToolUse", "PreCompact", "Stop", "SessionEnd"}
+    expected_events = {"SessionStart", "PostToolUse", "PreCompact", "Stop", "SessionEnd", "PreToolUse"}
     assert set(hooks.keys()) == expected_events
 
     for event_name, matchers in hooks.items():

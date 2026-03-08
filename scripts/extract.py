@@ -295,8 +295,12 @@ def run_extraction(session_id: str, transcript_path: str) -> None:
             scripts_dir = Path(__file__).parent
             consolidate_script = scripts_dir / "consolidate.py"
             if consolidate_script.exists():
-                os.system(
-                    f'nohup python3 "{consolidate_script}" > /dev/null 2>&1 &'
+                import subprocess
+                subprocess.Popen(
+                    [sys.executable, str(consolidate_script)],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    start_new_session=True,
                 )
 
         print(f"Extraction complete: {stored_count} observations stored.", file=sys.stderr)

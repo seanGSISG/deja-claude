@@ -69,7 +69,7 @@ def test_consolidation_threshold(tmp_path):
     store_observation("s1", "obs 2", [], [], 3, 0.5, db_path=db_path)
 
     result = run_consolidation(db_path=db_path)
-    assert result is False
+    assert result is None
 
 
 def test_consolidation_stores_result(tmp_path):
@@ -94,7 +94,7 @@ def test_consolidation_stores_result(tmp_path):
     with patch("consolidate.get_provider", return_value=mock_provider):
         result = run_consolidation(db_path=db_path)
 
-    assert result is True
+    assert result is not None
     consolidations = get_consolidations(db_path=db_path)
     assert len(consolidations) >= 1
     assert "common patterns" in consolidations[0]["summary"]
@@ -177,7 +177,7 @@ def test_contradiction_resolution(tmp_path):
     with patch("consolidate.get_provider", return_value=mock_provider):
         result = run_consolidation(db_path=db_path)
 
-    assert result is True
+    assert result is not None
     consolidations = get_consolidations(db_path=db_path)
     assert len(consolidations) >= 1
 
@@ -277,7 +277,7 @@ def test_continuous_mode_concept(tmp_path):
     with patch("consolidate.get_lock_path", return_value=tmp_path / "test.lock"), \
          patch("consolidate.get_db_path", return_value=db_path):
         result = run_with_lock(db_path=db_path)
-    assert result is False  # No data to consolidate
+    assert not result  # No data to consolidate (None is falsy)
 
 
 def test_parse_consolidation_response_markdown():

@@ -1,6 +1,6 @@
 {
   "name": "claude-memory",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Always-on memory for Claude Code -- records sessions, extracts observations, consolidates insights, injects context automatically.",
   "author": {
     "name": "seanGSISG",
@@ -10,6 +10,12 @@
   "license": "MIT",
   "keywords": ["memory", "context", "sessions", "observations"],
   "hooks": "./hooks/hooks.json",
-  "skills": ["./skills/memory-query"],
+  "skills": [
+    "./skills/memory-query",
+    "./skills/memory-status",
+    "./skills/memory-consolidate",
+    "./skills/memory-forget",
+    "./skills/memory-setup"
+  ],
   "setup": "./scripts/setup.sh"
 }

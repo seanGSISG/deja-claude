@@ -134,8 +134,11 @@ def parse_consolidation_response(response: str) -> dict | None:
     return result
 
 
-def run_consolidation(db_path: str | None = None) -> bool:
-    """Run a single consolidation cycle. Returns True if consolidation was performed."""
+def run_consolidation(db_path: str | None = None) -> dict | None:
+    """Run a single consolidation cycle. Returns result dict on success, None on failure.
+
+    Callers that check truthiness are backward-compatible (dict is truthy, None is falsy).
+    """
     if db_path is None:
         db_path = get_db_path()
 
@@ -143,7 +146,7 @@ def run_consolidation(db_path: str | None = None) -> bool:
         init_db(db_path)
     except Exception as e:
         print(f"Failed to init DB: {e}", file=sys.stderr)
-        return False
+        return None
 
     # Get unconsolidated observations
     observations = get_observations(
@@ -154,7 +157,7 @@ def run_consolidation(db_path: str | None = None) -> bool:
 
     if len(observations) < MIN_OBSERVATIONS_THRESHOLD:
         print(f"Only {len(observations)} unconsolidated observations (need >= {MIN_OBSERVATIONS_THRESHOLD}), skipping.", file=sys.stderr)
-        return False
+        return None
 
     # Get recent consolidation history for context
     history = get_consolidations(limit=5, db_path=db_path)
@@ -183,13 +186,13 @@ def run_consolidation(db_path: str | None = None) -> bool:
         response = provider.complete(prompt, "Consolidate these observations.")
     except Exception as e:
         print(f"LLM call failed: {e}", file=sys.stderr)
-        return False
+        return None
 
     # Parse response
     result = parse_consolidation_response(response)
     if not result:
         print("Failed to parse consolidation response.", file=sys.stderr)
-        return False
+        return None
 
     # Extract fields
     summary = result.get("summary", "")
@@ -200,7 +203,7 @@ def run_consolidation(db_path: str | None = None) -> bool:
 
     if not summary and not insight:
         print("Empty consolidation result, skipping.", file=sys.stderr)
-        return False
+        return None
 
     # Validate source_ids against actual observation IDs
     valid_ids = {o["id"] for o in observations}
@@ -239,8 +242,17 @@ def run_consolidation(db_path: str | None = None) -> bool:
     decay_importance(half_life_days=14, db_path=db_path)
     prune_old(retention_days=retention_days, min_importance=0.3, db_path=db_path)
 
+    consolidation_result = {
+        "summary": summary,
+        "insight": insight,
+        "connections": valid_connections,
+        "source_ids": source_ids,
+        "redundant_ids": [rid for rid in redundant_ids if rid in valid_ids],
+        "observation_count": len(observations),
+    }
+
     print(f"Consolidation complete: {len(source_ids)} observations consolidated.", file=sys.stderr)
-    return True
+    return consolidation_result
 
 
 def run_with_lock(db_path: str | None = None) -> bool:
@@ -260,11 +272,57 @@ def run_with_lock(db_path: str | None = None) -> bool:
         release_lock(lock_path)
 
 
+def dry_run(db_path: str | None = None) -> None:
+    """Preview what would be consolidated without executing."""
+    if db_path is None:
+        db_path = get_db_path()
+
+    try:
+        init_db(db_path)
+    except Exception as e:
+        print(json.dumps({"error": f"Failed to init DB: {e}"}))
+        return
+
+    observations = get_observations(
+        limit=MAX_OBSERVATIONS_BATCH,
+        unconsolidated_only=True,
+        db_path=db_path,
+    )
+
+    result = {
+        "unconsolidated_count": len(observations),
+        "threshold": MIN_OBSERVATIONS_THRESHOLD,
+        "would_consolidate": len(observations) >= MIN_OBSERVATIONS_THRESHOLD,
+        "observations": [
+            {"id": o["id"], "content": o["content"][:200], "priority": o["priority"],
+             "topics": o["topics"], "importance": o.get("importance", 0.5)}
+            for o in observations
+        ],
+    }
+    print(json.dumps(result, indent=2))
+
+
 def main():
     parser = argparse.ArgumentParser(description="Consolidate memory observations")
     parser.add_argument("--continuous", type=int, default=0,
                         help="Run every N minutes (0 = one-shot)")
+    parser.add_argument("--dry-run", action="store_true",
+                        help="Preview what would be consolidated without executing")
+    parser.add_argument("--foreground", action="store_true",
+                        help="Run consolidation directly (no lock) and print result to stdout")
     args = parser.parse_args()
+
+    if args.dry_run:
+        dry_run()
+        return
+
+    if args.foreground:
+        result = run_consolidation()
+        if result:
+            print(json.dumps(result, indent=2))
+        else:
+            print(json.dumps({"status": "no_consolidation", "message": "Nothing to consolidate or consolidation failed."}))
+        return
 
     if args.continuous > 0:
         interval = args.continuous * 60
